@@ -1,9 +1,13 @@
 const express = require('express');
 const bodyParser = require('body-parser');
+const path = require('path');
 const { executeCode } = require('./execute');
 
 const app = express();
 const port = 3000;
+
+// Serve static files (HTML, CSS, JS)
+app.use(express.static(path.join(__dirname, '../frontend')));
 
 app.use(bodyParser.json());
 
