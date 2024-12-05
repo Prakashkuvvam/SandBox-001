@@ -1,6 +1,6 @@
-const { exec } = require('child_process');
 const fs = require('fs');
 const path = require('path');
+const { exec } = require('child_process');
 
 const executeCode = (code, language) => {
     return new Promise((resolve, reject) => {
@@ -8,12 +8,12 @@ const executeCode = (code, language) => {
         const fileName = `user_code.${language === 'python' ? 'py' : 'cpp'}`;
         const fullPath = path.join(userCodePath, fileName);
 
-        // Create user code directory if it doesn't exist
+        // Ensure the directory exists
         if (!fs.existsSync(userCodePath)) {
             fs.mkdirSync(userCodePath);
         }
 
-        // Write code to file
+        // Write code to the file
         fs.writeFileSync(fullPath, code);
 
         // Docker command to run code inside a container
@@ -27,8 +27,10 @@ const executeCode = (code, language) => {
                 resolve(stdout);
             }
 
-            // Clean up the code file after execution
-            fs.unlinkSync(fullPath);
+            // Clean up the code file after execution, only if it exists
+            if (fs.existsSync(fullPath)) {
+                fs.unlinkSync(fullPath);
+            }
         });
     });
 };
