@@ -16,15 +16,15 @@ const executeCode = (code, language) => {
         // Write code to the file
         fs.writeFileSync(fullPath, code);
 
-        // Docker command to run code inside a container
+        // Get the Docker command based on the language
         const dockerCommand = getDockerCommand(language, fullPath);
 
         // Execute the command
         exec(dockerCommand, (error, stdout, stderr) => {
             if (error) {
-                reject(stderr);
+                reject(stderr);  // Reject with error message
             } else {
-                resolve(stdout);
+                resolve(stdout);  // Resolve with the output of the execution
             }
 
             // Clean up the code file after execution, only if it exists
@@ -41,7 +41,7 @@ const getDockerCommand = (language, codePath) => {
         case 'python':
             return `docker run --rm -v ${codePath}:/code python:3 python /code`;
         case 'cpp':
-            return `docker run --rm -v ${codePath}:/code gcc:latest bash -c "g++ /code -o /code/output && /code/output"`;
+            return `docker run --rm -v ${path.dirname(codePath)}:/code gcc:latest bash -c "g++ /code/$(basename ${codePath}) -o /code/output && /code/output"`;
         default:
             throw new Error('Unsupported language');
     }
