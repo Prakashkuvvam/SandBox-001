@@ -28,26 +28,37 @@ wss.on('connection', (ws) => {
 
         // Write code to file
         fs.writeFileSync(fullPath, code);
+        console.log(`Code written to ${fullPath}`);
 
         // Get the Docker command based on language
         const dockerCommand = getDockerCommand(language, fullPath, userInput);
 
+        // Log the docker command to debug
+        console.log(`Running Docker command: ${dockerCommand}`);
+
         // Execute code and stream the output to the WebSocket
-        const process = exec(dockerCommand);
+        const process = exec(dockerCommand, (error, stdout, stderr) => {
+            if (error) {
+                console.error(`Error executing the code: ${error.message}`);
+                ws.send(`Error: ${error.message}`);
+                return;
+            }
 
-        // Stream stdout to the terminal
-        process.stdout.on('data', (data) => {
-            ws.send(data.toString());
-        });
+            if (stderr) {
+                console.error(`stderr: ${stderr}`);
+                ws.send(`stderr: ${stderr}`);
+            }
 
-        // Stream stderr to the terminal
-        process.stderr.on('data', (data) => {
-            ws.send(data.toString());
+            if (stdout) {
+                console.log(`stdout: ${stdout}`);
+                ws.send(stdout);
+            }
         });
 
         // Handle process exit
         process.on('exit', () => {
             fs.unlinkSync(fullPath); // Cleanup the code file after execution
+            console.log(`Cleanup done: ${fullPath}`);
         });
     });
 });
