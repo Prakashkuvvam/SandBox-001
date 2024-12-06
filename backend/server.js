@@ -1,33 +1,66 @@
 const express = require('express');
-const bodyParser = require('body-parser');
+const http = require('http');
+const WebSocket = require('ws');
+const { exec } = require('child_process');
 const path = require('path');
-const { executeCode } = require('./execute');
+const fs = require('fs');
 
 const app = express();
-const port = 3000;
+const server = http.createServer(app);
+const wss = new WebSocket.Server({ server });
 
-// Serve static files (HTML, CSS, JS) from the 'frontend' directory
-app.use(express.static(path.join(__dirname, '../frontend')));
+const userCodePath = path.join(__dirname, 'user_code');
 
-app.use(bodyParser.json());
+// Ensure user_code directory exists
+if (!fs.existsSync(userCodePath)) {
+    fs.mkdirSync(userCodePath);
+}
 
-app.post('/execute', async (req, res) => {
-    const { code, language } = req.body;
+wss.on('connection', (ws) => {
+    ws.on('message', (message) => {
+        const { code, language, userInput } = JSON.parse(message);
 
-    try {
-        const result = await executeCode(code, language);
-        res.json({ output: result });
-    } catch (error) {
-        res.status(500).json({ output: 'Error executing code' });
+        const fileName = `user_code.${language === 'python' ? 'py' : 'cpp'}`;
+        const fullPath = path.join(userCodePath, fileName);
+
+        // Write code to file
+        fs.writeFileSync(fullPath, code);
+
+        // Get the Docker command based on language
+        const dockerCommand = getDockerCommand(language, fullPath, userInput);
+
+        // Execute code and stream the output to the WebSocket
+        const process = exec(dockerCommand);
+
+        // Stream stdout to the terminal
+        process.stdout.on('data', (data) => {
+            ws.send(data.toString());
+        });
+
+        // Stream stderr to the terminal
+        process.stderr.on('data', (data) => {
+            ws.send(data.toString());
+        });
+
+        // Handle process exit
+        process.on('exit', () => {
+            fs.unlinkSync(fullPath); // Cleanup the code file after execution
+        });
+    });
+});
+
+// Function to get the Docker command based on the language
+const getDockerCommand = (language, codePath, userInput) => {
+    switch (language) {
+        case 'python':
+            return `echo "${userInput}" | docker run --rm -v ${path.dirname(codePath)}:/code python:3 python /code/$(basename ${codePath})`;
+        case 'cpp':
+            return `docker run --rm -v ${path.dirname(codePath)}:/code gcc:latest bash -c "g++ /code/$(basename ${codePath}) -o /code/output && echo '${userInput}' | /code/output"`;
+        default:
+            throw new Error('Unsupported language');
     }
-});
+};
 
-// This line is not strictly necessary as Express will serve 'index.html' by default
-// for the root route. But it's here just to be explicit about the route.
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, '../frontend/index.html'));
-});
-
-app.listen(port, () => {
-    console.log(`Server running on http://localhost:${port}`);
+server.listen(3000, () => {
+    console.log('Server running on http://localhost:3000');
 });
