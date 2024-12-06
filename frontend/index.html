@@ -3,32 +3,95 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Code Execution Platform</title>
-    <link rel="stylesheet" href="style.css">
+    <title>Code Executor with Terminal</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm/css/xterm.css">
+    <style>
+        #terminal-container {
+            height: 400px;
+            width: 100%;
+            border: 1px solid black;
+            background-color: #1d1f21;
+        }
+        #userInput {
+            width: 100%;
+        }
+        #loading {
+            display: none;
+        }
+    </style>
 </head>
 <body>
-    <div id="container">
-        <h1>Code Execution Platform</h1>
-        <form id="codeForm">
-            <textarea id="codeInput" placeholder="Write your code here..." rows="10" cols="50"></textarea>
-            <select id="languageSelect">
-                <option value="python">Python</option>
-                <option value="cpp">C++</option>
-            </select>
-            <button type="submit">Execute Code</button>
-        </form>
+    <h1>Code Execution with Interactive Terminal</h1>
 
-        <!-- Loading Indicator (Initially hidden) -->
-        <div id="loading" class="hidden">
-            <p>Executing your code...</p>
-            <div class="spinner"></div>
-        </div>
+    <label for="codeInput">Enter your code:</label><br>
+    <textarea id="codeInput" rows="10" cols="50"></textarea><br>
 
-        <div id="output">
-            <pre id="result"></pre>
-        </div>
-    </div>
+    <label for="languageSelect">Select Language:</label>
+    <select id="languageSelect">
+        <option value="python">Python</option>
+        <option value="cpp">C++</option>
+    </select><br><br>
 
-    <script src="script.js"></script>
+    <button id="executeButton">Execute</button>
+    <div id="loading">Loading...</div>
+    <div id="terminal-container"></div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/xterm/lib/xterm.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/ws/dist/websocket.min.js"></script>
+    <script>
+        const terminal = new Terminal({
+            cursorBlink: true,
+            theme: {
+                background: "#1d1f21",
+                foreground: "#ffffff"
+            }
+        });
+        terminal.open(document.getElementById('terminal-container'));
+
+        let socket;
+        
+        // Establish WebSocket connection
+        const startWebSocket = () => {
+            socket = new WebSocket('ws://localhost:3000/execute');
+            
+            socket.onopen = () => {
+                console.log('WebSocket is open');
+            };
+
+            socket.onmessage = (event) => {
+                terminal.write(event.data);
+            };
+
+            socket.onclose = () => {
+                console.log('WebSocket connection closed');
+            };
+
+            socket.onerror = (error) => {
+                console.error('WebSocket error: ', error);
+            };
+        };
+
+        // Handle code execution when the button is clicked
+        document.getElementById('executeButton').addEventListener('click', () => {
+            const code = document.getElementById('codeInput').value;
+            const language = document.getElementById('languageSelect').value;
+            const userInput = '';  // Initially, there is no input from user
+            
+            // Show loading indicator
+            document.getElementById('loading').style.display = 'block';
+            
+            // Start WebSocket connection
+            startWebSocket();
+
+            // Send the code and language to the backend for execution
+            socket.send(JSON.stringify({ code, language, userInput }));
+
+            setTimeout(() => {
+                // Close the WebSocket after 2 minutes (optional)
+                socket.close();
+                document.getElementById('loading').style.display = 'none';
+            }, 120000); // Close after 2 minutes
+        });
+    </script>
 </body>
 </html>
