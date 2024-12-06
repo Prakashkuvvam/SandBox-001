@@ -1,42 +1,39 @@
 const express = require('express');
 const http = require('http');
 const WebSocket = require('ws');
-const path = require('path');
 const fs = require('fs');
 const { exec } = require('child_process');
+const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
-// Serve static files (like CSS, JS, and HTML) from the 'frontend' directory
-app.use(express.static(path.join(__dirname, '../frontend')));
-
 const userCodePath = path.join(__dirname, 'user_code');
-
-// Ensure user_code directory exists
 if (!fs.existsSync(userCodePath)) {
     fs.mkdirSync(userCodePath);
 }
 
 wss.on('connection', (ws) => {
+    console.log("New client connected");
+
     ws.on('message', (message) => {
         const { code, language, userInput } = JSON.parse(message);
-
         const fileName = `user_code.${language === 'python' ? 'py' : 'cpp'}`;
         const fullPath = path.join(userCodePath, fileName);
 
-        // Write code to file
+        // Write user code to file
         fs.writeFileSync(fullPath, code);
+
+        // Log the code to be executed
         console.log(`Code written to ${fullPath}`);
 
-        // Get the Docker command based on language
+        // Get the Docker command
         const dockerCommand = getDockerCommand(language, fullPath, userInput);
 
-        // Log the docker command to debug
         console.log(`Running Docker command: ${dockerCommand}`);
 
-        // Execute code and stream the output to the WebSocket
+        // Execute the code using Docker
         const process = exec(dockerCommand, (error, stdout, stderr) => {
             if (error) {
                 console.error(`Error executing the code: ${error.message}`);
@@ -51,19 +48,17 @@ wss.on('connection', (ws) => {
 
             if (stdout) {
                 console.log(`stdout: ${stdout}`);
-                ws.send(stdout);
+                ws.send(stdout); // Send the output back to the frontend
             }
         });
 
-        // Handle process exit
         process.on('exit', () => {
-            fs.unlinkSync(fullPath); // Cleanup the code file after execution
-            console.log(`Cleanup done: ${fullPath}`);
+            fs.unlinkSync(fullPath); // Clean up the code file after execution
         });
     });
 });
 
-// Function to get the Docker command based on the language
+// Function to generate the Docker command based on language
 const getDockerCommand = (language, codePath, userInput) => {
     switch (language) {
         case 'python':
@@ -75,7 +70,7 @@ const getDockerCommand = (language, codePath, userInput) => {
     }
 };
 
-// Start server on port 3000
+// Start the server on port 3000
 server.listen(3000, () => {
-    console.log('Server running on http://localhost:3000');
+    console.log('Server is running on http://localhost:3000');
 });
