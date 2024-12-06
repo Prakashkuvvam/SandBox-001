@@ -1,13 +1,16 @@
 const express = require('express');
 const http = require('http');
 const WebSocket = require('ws');
-const { exec } = require('child_process');
 const path = require('path');
 const fs = require('fs');
+const { exec } = require('child_process');
 
 const app = express();
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
+
+// Serve static files (like CSS, JS, and HTML) from the 'frontend' directory
+app.use(express.static(path.join(__dirname, '../frontend')));
 
 const userCodePath = path.join(__dirname, 'user_code');
 
@@ -61,6 +64,7 @@ const getDockerCommand = (language, codePath, userInput) => {
     }
 };
 
+// Start server on port 3000
 server.listen(3000, () => {
     console.log('Server running on http://localhost:3000');
 });
