@@ -11,6 +11,7 @@
         <h1>Code Execution Platform</h1>
         <form id="codeForm">
             <textarea id="codeInput" placeholder="Write your code here..." rows="10" cols="50"></textarea>
+            <textarea id="inputData" placeholder="Enter input data..." rows="5" cols="50"></textarea>
             <select id="languageSelect">
                 <option value="python">Python</option>
                 <option value="cpp">C++</option>
@@ -18,7 +19,6 @@
             <button type="submit">Execute Code</button>
         </form>
 
-        <!-- Loading Indicator (Initially hidden) -->
         <div id="loading" class="hidden">
             <p>Executing your code...</p>
             <div class="spinner"></div>
