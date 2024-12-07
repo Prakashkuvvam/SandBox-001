@@ -1,4 +1,4 @@
-document.getElementById('codeForm').addEventListener('submit', function(event) {
+document.getElementById('codeForm').addEventListener('submit', function (event) {
     event.preventDefault();
 
     const code = document.getElementById('codeInput').value;
@@ -6,28 +6,34 @@ document.getElementById('codeForm').addEventListener('submit', function(event) {
     const resultElement = document.getElementById('result');
     const loadingElement = document.getElementById('loading');
 
-    // Show the loading indicator
     loadingElement.classList.remove('hidden');
-    resultElement.textContent = '';  // Clear previous result
+    resultElement.textContent = '';
 
-    // Send the code to the backend for execution
     fetch('/execute', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code, language })
+        body: JSON.stringify({ code, language }),
     })
-    .then(response => response.json())
-    .then(data => {
-        // Hide the loading indicator
-        loadingElement.classList.add('hidden');
-        
-        // Show the result of the code execution
-        resultElement.textContent = data.output;
-    })
-    .catch(error => {
-        // Hide the loading indicator in case of error
-        loadingElement.classList.add('hidden');
-        
-        resultElement.textContent = 'Error executing code: ' + error.message;
-    });
+        .then((response) => response.body)
+        .then((stream) => {
+            const reader = stream.getReader();
+            const decoder = new TextDecoder();
+
+            function readChunk() {
+                reader.read().then(({ done, value }) => {
+                    if (done) {
+                        loadingElement.classList.add('hidden');
+                        return;
+                    }
+                    resultElement.textContent += decoder.decode(value, { stream: true });
+                    readChunk();
+                });
+            }
+
+            readChunk();
+        })
+        .catch((error) => {
+            loadingElement.classList.add('hidden');
+            resultElement.textContent = 'Error executing code: ' + error.message;
+        });
 });
