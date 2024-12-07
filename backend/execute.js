@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const { spawn } = require('child_process');
 
-const executeCode = (code, language) => {
+const executeCode = (code, language, userInput = '') => {
     return new Promise((resolve, reject) => {
         const userCodePath = path.join(__dirname, 'user_code');
         const fileName = `user_code.${language === 'python' ? 'py' : 'cpp'}`;
@@ -18,6 +18,12 @@ const executeCode = (code, language) => {
 
         const process = spawn(dockerCommand[0], dockerCommand.slice(1));
         let output = '';
+
+        // Write user input to stdin
+        if (userInput) {
+            process.stdin.write(userInput + '\n');
+        }
+        process.stdin.end();
 
         process.stdout.on('data', (data) => {
             output += data.toString();
@@ -37,9 +43,9 @@ const executeCode = (code, language) => {
 const getDockerCommand = (language, codePath) => {
     switch (language) {
         case 'python':
-            return `docker run --rm -v ${codePath}:/code python:3 python /code`;
+            return `docker run --rm -i -v ${codePath}:/code python:3 python /code`;
         case 'cpp':
-            return `docker run --rm -v ${path.dirname(codePath)}:/code gcc:latest bash -c "g++ /code/$(basename ${codePath}) -o /code/output && /code/output"`;
+            return `docker run --rm -i -v ${path.dirname(codePath)}:/code gcc:latest bash -c "g++ /code/$(basename ${codePath}) -o /code/output && /code/output"`;
         default:
             throw new Error('Unsupported language');
     }
