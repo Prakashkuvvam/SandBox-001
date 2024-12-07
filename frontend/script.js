@@ -3,6 +3,7 @@ document.getElementById('codeForm').addEventListener('submit', function (event) 
 
     const code = document.getElementById('codeInput').value;
     const language = document.getElementById('languageSelect').value;
+    const inputData = document.getElementById('inputData').value;
     const resultElement = document.getElementById('result');
     const loadingElement = document.getElementById('loading');
 
@@ -12,25 +13,12 @@ document.getElementById('codeForm').addEventListener('submit', function (event) 
     fetch('/execute', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code, language }),
+        body: JSON.stringify({ code, language, input: inputData }),
     })
-        .then((response) => response.body)
-        .then((stream) => {
-            const reader = stream.getReader();
-            const decoder = new TextDecoder();
-
-            function readChunk() {
-                reader.read().then(({ done, value }) => {
-                    if (done) {
-                        loadingElement.classList.add('hidden');
-                        return;
-                    }
-                    resultElement.textContent += decoder.decode(value, { stream: true });
-                    readChunk();
-                });
-            }
-
-            readChunk();
+        .then((response) => response.json())
+        .then((data) => {
+            loadingElement.classList.add('hidden');
+            resultElement.textContent = data.output;
         })
         .catch((error) => {
             loadingElement.classList.add('hidden');
