@@ -6,24 +6,20 @@ const { executeCode } = require('./execute');
 const app = express();
 const port = 3000;
 
-// Serve static files (HTML, CSS, JS) from the 'frontend' directory
 app.use(express.static(path.join(__dirname, '../frontend')));
-
 app.use(bodyParser.json());
 
 app.post('/execute', async (req, res) => {
-    const { code, language } = req.body;
+    const { code, language, input } = req.body;
 
     try {
-        const result = await executeCode(code, language);
+        const result = await executeCode(code, language, input);
         res.json({ output: result });
     } catch (error) {
         res.status(500).json({ output: 'Error executing code' });
     }
 });
 
-// This line is not strictly necessary as Express will serve 'index.html' by default
-// for the root route. But it's here just to be explicit about the route.
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, '../frontend/index.html'));
 });
