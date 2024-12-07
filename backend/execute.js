@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { exec } = require('child_process');
+const { spawn } = require('child_process');
 
 const executeCode = (code, language) => {
     return new Promise((resolve, reject) => {
@@ -8,34 +8,32 @@ const executeCode = (code, language) => {
         const fileName = `user_code.${language === 'python' ? 'py' : 'cpp'}`;
         const fullPath = path.join(userCodePath, fileName);
 
-        // Ensure the directory exists
         if (!fs.existsSync(userCodePath)) {
             fs.mkdirSync(userCodePath);
         }
 
-        // Write code to the file
         fs.writeFileSync(fullPath, code);
 
-        // Get the Docker command based on the language
-        const dockerCommand = getDockerCommand(language, fullPath);
+        const dockerCommand = getDockerCommand(language, fullPath).split(' ');
 
-        // Execute the command
-        exec(dockerCommand, (error, stdout, stderr) => {
-            if (error) {
-                reject(stderr);  // Reject with error message
-            } else {
-                resolve(stdout);  // Resolve with the output of the execution
-            }
+        const process = spawn(dockerCommand[0], dockerCommand.slice(1));
+        let output = '';
 
-            // Clean up the code file after execution, only if it exists
-            if (fs.existsSync(fullPath)) {
-                fs.unlinkSync(fullPath);
-            }
+        process.stdout.on('data', (data) => {
+            output += data.toString();
+        });
+
+        process.stderr.on('data', (data) => {
+            output += data.toString();
+        });
+
+        process.on('close', (code) => {
+            fs.unlinkSync(fullPath);
+            code === 0 ? resolve(output) : reject(output);
         });
     });
 };
 
-// Get the Docker command based on the language
 const getDockerCommand = (language, codePath) => {
     switch (language) {
         case 'python':
