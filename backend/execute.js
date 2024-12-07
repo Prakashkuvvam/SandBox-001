@@ -16,10 +16,10 @@ const executeCode = (code, language, userInput = '') => {
 
         const dockerCommand = getDockerCommand(language, fullPath).split(' ');
 
-        const process = spawn(dockerCommand[0], dockerCommand.slice(1));
+        const process = spawn(dockerCommand[0], dockerCommand.slice(1), { stdio: ['pipe', 'pipe', 'pipe'] });
         let output = '';
 
-        // Write user input to stdin
+        // Feed user input dynamically
         if (userInput) {
             process.stdin.write(userInput + '\n');
         }
